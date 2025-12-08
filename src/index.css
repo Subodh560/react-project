@@ -1,0 +1,80 @@
+:root{
+	--bg: #f6f7fb;
+	--card: #fff;
+	--accent: #0b76ef;
+	--muted: #6b7280;
+	--success: #10b981;
+}
+
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body { margin: 0; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background: var(--bg); color: #111827; }
+
+.App-header{padding:20px 24px;border-bottom:1px solid #e6e9ef;background:linear-gradient(90deg,#ffffff, #f8fbff)}
+.App-header h1{margin:0;font-size:1.4rem}
+
+.App-main{display:flex;gap:20px;padding:20px;align-items:flex-start}
+
+/* layout grid that becomes single-column on narrow screens */
+.layout-grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+@media (max-width: 980px){
+	.layout-grid{grid-template-columns:1fr}
+}
+
+/* Search bar */
+.search-bar{display:flex;gap:10px;align-items:center;margin-bottom:12px;width:100%}
+.search-bar input{flex:1;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;background:white}
+.search-bar select{padding:10px;border-radius:8px;border:1px solid #e2e8f0;background:white}
+
+/* Product area and list */
+.product-area{flex:1;min-width:0}
+.product-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;max-height:74vh;overflow:auto;padding:6px}
+
+/* Nice custom scrollbar for WebKit and Firefox */
+.product-list::-webkit-scrollbar{width:12px;height:12px}
+.product-list::-webkit-scrollbar-track{background:transparent}
+.product-list::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--accent),#5aa0f6);border-radius:999px}
+@-moz-document url-prefix(){
+	.product-list{scrollbar-width:thin;scrollbar-color:var(--accent) transparent}
+}
+
+.product{background:var(--card);border-radius:12px;padding:12px;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(15,23,42,0.06);transition:transform .12s ease,border-color .12s ease}
+.product:hover{transform:translateY(-6px)}
+.product-image{height:140px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px;margin-bottom:12px}
+.product-image img{width:100%;height:100%;object-fit:cover}
+.product-title{font-size:1rem;margin:0 0 6px}
+.product-meta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:.9rem;margin-bottom:8px}
+.product .description{color:var(--muted);font-size:0.9rem;margin-bottom:12px}
+.add-to-cart-button{background:var(--accent);color:white;padding:8px 10px;border-radius:8px;border:none;cursor:pointer}
+
+/* Cart styles */
+.cart{width:320px;max-width:40%;background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(15,23,42,0.08);position:sticky;top:20px;height:fit-content}
+.cart h2{margin:0 0 12px}
+.empty{color:var(--muted);padding:12px 0}
+.cart-list{display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow:auto;padding-right:6px}
+.cart-list::-webkit-scrollbar{width:10px}
+.cart-list::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:999px}
+.cart-item{display:flex;gap:10px;align-items:center}
+.cart-item img{width:64px;height:48px;object-fit:cover;border-radius:6px}
+.item-info{flex:1}
+.item-name{font-weight:600}
+.item-price{color:var(--muted);font-size:.95rem}
+.item-controls{display:flex;gap:8px;align-items:center;margin-top:6px}
+.item-controls input{width:68px;padding:6px;border-radius:6px;border:1px solid #e2e8f0}
+.item-controls .remove{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:6px 8px;border-radius:6px;cursor:pointer}
+.cart-total{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px dashed #e6e9ef;margin-top:12px}
+.checkout{margin-top:12px;width:100%;padding:10px;border-radius:8px;border:none;background:var(--success);color:white;cursor:pointer}
+
+/* Responsive layout */
+@media (max-width: 980px){
+	.App-main{flex-direction:column;padding:12px}
+	.cart{width:100%;position:relative;top:auto}
+	.product-list{max-height:56vh}
+}
+
+@media (max-width: 520px){
+	.product-list{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+	.product-image{height:110px}
+}
+
+.no-results{color:var(--muted);padding:20px}

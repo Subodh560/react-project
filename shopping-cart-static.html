@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Shopping Cart — Static</title>
+    <style>
+      :root{--bg:#f6f7fb;--card:#fff;--accent:#0b76ef;--muted:#6b7280;--success:#10b981}
+      *{box-sizing:border-box}
+      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:#0f172a}
+      .container{max-width:1200px;margin:18px auto;padding:12px}
+      header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+      header h1{font-size:1.25rem;margin:0}
+      .controls{display:flex;gap:10px;flex-wrap:wrap}
+      .controls input,.controls select{padding:8px;border-radius:8px;border:1px solid #e6e9ef;background:white}
+
+      .layout{display:flex;gap:18px}
+      .products{flex:1;min-width:0}
+      /* Product grid: let the page scroll (no inner scrollbar) so all products are shown responsively */
+      .product-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:6px}
+      /* keep custom scrollbar rules for elements that still scroll (cart) but not used here */
+
+      .card{background:var(--card);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 6px rgba(2,6,23,0.06)}
+      /* Amazon-like card: allow wider image + info */
+      .card.amazon{display:flex;flex-direction:column}
+      .card .title-row{display:flex;justify-content:space-between;align-items:center}
+      .rating{display:flex;gap:4px;align-items:center;color:#f59e0b}
+      .badge{background:#ffd; color:#b45309;padding:4px 8px;border-radius:6px;font-weight:700;border:1px solid #fceab4}
+      .price-big{font-size:1.15rem;font-weight:700;color:#111827}
+      .card .img{height:140px;border-radius:8px;overflow:hidden;background:#eef2ff;display:flex;align-items:center;justify-content:center}
+      .card .img img{width:100%;height:100%;object-fit:cover}
+      .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:.95rem}
+      .desc{color:var(--muted);font-size:.95rem;margin-bottom:6px}
+      .add{background:var(--accent);color:white;padding:8px;border-radius:8px;border:0;cursor:pointer}
+
+      .cart{width:340px;background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(2,6,23,0.08);position:sticky;top:18px;height:fit-content}
+      .cart h2{margin:0 0 8px}
+      .cart-list{display:flex;flex-direction:column;gap:12px;max-height:48vh;overflow:auto;padding-right:6px}
+      .cart-item{display:flex;gap:10px;align-items:center}
+      .cart-item img{width:72px;height:54px;object-fit:cover;border-radius:6px}
+      .item-info{flex:1}
+      .item-info .name{font-weight:600}
+      .controls-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+      .controls-row input{width:72px;padding:6px;border-radius:6px;border:1px solid #e6e9ef}
+      .remove{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:6px;border-radius:6px;cursor:pointer}
+      .total{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px dashed #e6e9ef;margin-top:12px}
+      .checkout{margin-top:12px;padding:10px;border-radius:8px;border:0;background:var(--success);color:white;width:100%;cursor:pointer}
+
+      /* Mobile: stack layout, turn cart into a drawer button */
+      @media (max-width:980px){
+        .layout{flex-direction:column}
+        .cart{width:100%;position:relative;top:auto}
+      }
+      @media (max-width:520px){
+        .product-list{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+        .card .img{height:110px}
+      }
+
+      /* List view styles */
+      /* List view uses page scroll instead of inner scrolling */
+      .product-list.list{display:block;padding:6px}
+      .list-item{display:flex;gap:12px;background:var(--card);border-radius:10px;padding:12px;margin-bottom:12px;align-items:flex-start}
+      .list-item .img{flex:0 0 220px;height:140px}
+      .list-item .info{flex:1}
+      .list-item .info .meta{display:flex;justify-content:space-between;align-items:center}
+
+      /* Modal */
+      .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
+      .modal{background:var(--card);max-width:900px;width:100%;border-radius:10px;overflow:auto;box-shadow:0 10px 40px rgba(2,6,23,0.4);display:flex;gap:18px;padding:18px}
+      .modal img{width:360px;height:260px;object-fit:cover;border-radius:8px}
+      .modal .modal-body{flex:1}
+      .modal .close{background:transparent;border:0;font-size:1.25rem;cursor:pointer}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Shopping Cart (Static)</h1>
+        <div class="controls">
+          <input id="search" placeholder="Search products or descriptions..." />
+          <select id="category"></select>
+          <button id="toggleView" style="padding:8px;border-radius:8px;border:1px solid #e6e9ef;background:white;cursor:pointer">List View</button>
+          <button id="toggleAdd" style="padding:8px;border-radius:8px;border:1px solid #e6e9ef;background:white;cursor:pointer">+ Add Product</button>
+          <button id="resetCatalog" title="Clear saved products and cart" style="padding:8px;border-radius:8px;border:1px solid #e6e9ef;background:white;cursor:pointer">Reset Catalog</button>
+        </div>
+        <div id="addArea" style="margin-top:10px;display:none;padding:10px;border-radius:8px;background:#ffffff">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="newName" placeholder="Name" style="flex:2;padding:8px;border:1px solid #e6e9ef;border-radius:8px" />
+            <input id="newPrice" type="number" min="0" placeholder="Price" style="width:120px;padding:8px;border:1px solid #e6e9ef;border-radius:8px" />
+            <input id="newCategory" placeholder="Category" style="width:160px;padding:8px;border:1px solid #e6e9ef;border-radius:8px" />
+            <input id="newImg" placeholder="Image URL (optional)" style="flex:1;min-width:200px;padding:8px;border:1px solid #e6e9ef;border-radius:8px" />
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <input id="newDesc" placeholder="Short description" style="flex:1;padding:8px;border:1px solid #e6e9ef;border-radius:8px" />
+            <button id="addProductBtn" style="padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:white;cursor:pointer">Add</button>
+            <button id="cancelAdd" style="padding:8px 12px;border-radius:8px;border:1px solid #e6e9ef;background:white;cursor:pointer">Cancel</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section class="products">
+          <div id="productList" class="product-list" aria-live="polite"></div>
+        </section>
+
+        <aside class="cart" id="cart">
+          <h2>Your Cart</h2>
+          <div id="cartList" class="cart-list"></div>
+          <div class="total"><strong>Total:</strong><span id="cartTotal">$0.00</span></div>
+          <button id="checkout" class="checkout">Proceed to Checkout</button>
+        </aside>
+      </div>
+      <!-- Product detail modal -->
+      <div id="productModal" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal" role="document">
+          <div style="flex:0 0 380px"><img id="modalImage" src="" alt=""/></div>
+          <div class="modal-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <h2 id="modalTitle">Product</h2>
+              <button class="close" id="modalClose">✕</button>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;margin:6px 0">
+              <div id="modalRating" class="rating">★★★★★ <small id="modalReviews" style="color:var(--muted);font-weight:600;margin-left:8px">(0)</small></div>
+              <div class="badge" id="modalBadge" style="display:none">Prime</div>
+            </div>
+            <div id="modalDesc" style="color:var(--muted);margin-bottom:12px">Description</div>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><div class="price-big" id="modalPrice">$0.00</div></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="modalQty" type="number" min="1" value="1" style="width:86px;padding:8px;border-radius:8px;border:1px solid #e6e9ef" />
+              <button id="modalAdd" class="add">Add to Cart</button>
+              <button id="modalBuy" style="padding:8px 12px;border-radius:8px;border:none;background:#ff9900;color:#111;font-weight:700;cursor:pointer">Buy Now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        // generate a larger catalog of products (if no persisted products exist)
+        function generateDefaultProducts(n){
+          const categories = ['Electronics','Sport','Home','Clothing','Books','Toys','Beauty','Garden'];
+          const base = ['Headphones','Shoes','Coffee Maker','Jacket','Book','Yoga Mat','Smart Watch','Blender','Backpack','Sunglasses','Camera','Speaker','Microwave','Lamp','Vacuum','Chair','Desk','Router','Monitor','Keyboard'];
+          const adjectives = ['Pro','Plus','Max','Lite','2025','Essential','Premium','Classic','Deluxe','Compact'];
+          const products = [];
+          for(let i=1;i<=n;i++){
+            const name = `${adjectives[i % adjectives.length]} ${base[i % base.length]}`;
+            const category = categories[i % categories.length];
+            // price by category (rough ranges)
+            const priceBase = { Electronics:99, Sport:45, Home:60, Clothing:55, Books:20, Toys:25, Beauty:30, Garden:40 }[category] || 50;
+            const price = Math.round((priceBase + (i * 7 % 120)) + (i % 9));
+            const img = `https://via.placeholder.com/400x300?text=${encodeURIComponent(name)}`;
+            const description = `${name} — high quality ${category.toLowerCase()} product with great reviews and value.`;
+            products.push({ id:i, name, price, img, category, description });
+          }
+          return products;
+        }
+        const DEFAULT_PRODUCTS = generateDefaultProducts(40);
+
+        // helpers to access DOM
+        const $ = id => document.getElementById(id);
+        const productList = $('productList');
+        const search = $('search');
+        const categorySelect = $('category');
+        const cartList = $('cartList');
+        const cartTotal = $('cartTotal');
+        const checkout = $('checkout');
+
+        // load/save cart
+        let state = { searchText:'', category:'All', cart: loadCart() };
+        function loadCart(){ try{ const r = localStorage.getItem('static_cart'); return r ? JSON.parse(r) : []; } catch(e) { return []; } }
+        function saveCart(){ try{ localStorage.setItem('static_cart', JSON.stringify(state.cart)); } catch(e) {} }
+
+        // product store (persisted)
+        function loadProducts(){ try{ const raw = localStorage.getItem('static_products'); if(!raw) return DEFAULT_PRODUCTS.slice(); const parsed = JSON.parse(raw); return (Array.isArray(parsed) && parsed.length) ? parsed : DEFAULT_PRODUCTS.slice(); } catch(e) { return DEFAULT_PRODUCTS.slice(); } }
+        function saveProducts(list){ try{ localStorage.setItem('static_products', JSON.stringify(list)); } catch(e) {} }
+
+        const productStore = loadProducts();
+
+        // ensure each product has rating, reviews, and optional badge
+        productStore.forEach((p)=>{
+          if(typeof p.rating === 'undefined') p.rating = (Math.random()*1.5 + 3.5).toFixed(1); // 3.5 - 5.0
+          if(typeof p.reviews === 'undefined') p.reviews = Math.floor(Math.random()*2000 + 3);
+          if(typeof p.badge === 'undefined') p.badge = Math.random() > 0.75; // ~25% have badge
+        });
+
+        // view mode: 'grid' or 'list'
+        let viewMode = 'grid';
+
+        // ensure each product has rating, reviews, and optional badge
+        (function normalizeProducts(){
+          for(let p of productStore){
+            if(typeof p.rating === 'undefined') p.rating = (Math.random()*1.5 + 3.5).toFixed(1); // 3.5 - 5.0
+            if(typeof p.reviews === 'undefined') p.reviews = Math.floor(Math.random()*2000 + 3);
+            if(typeof p.badge === 'undefined') p.badge = Math.random() > 0.7; // ~30% have badge
+          }
+        })();
+
+        // rendering
+        function getCategories(){ return ['All', ...Array.from(new Set(productStore.map(p=>p.category)))]; }
+
+        function renderCategories(){
+          categorySelect.innerHTML = getCategories().map(c=>`<option value="${c}">${c}</option>`).join('');
+          categorySelect.value = state.category;
+        }
+
+        function renderProducts(){
+          const q = state.searchText.trim().toLowerCase();
+          const items = productStore.filter(p => state.category === 'All' ? true : p.category === state.category)
+                                    .filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+          productList.classList.toggle('list', viewMode === 'list');
+          if(items.length === 0){ productList.innerHTML = '<div style="color:var(--muted);padding:12px">No products found.</div>'; return; }
+
+          if(viewMode === 'list'){
+            productList.innerHTML = items.map(p => `
+              <div class="list-item" data-id="${p.id}">
+                <div class="img" data-id="${p.id}"><img src="${p.img}" alt="${p.name}" loading="lazy"/></div>
+                <div class="info">
+                  <div class="meta"><strong>${p.name}</strong><span class="price-big">$${p.price}</span></div>
+                  <div style="display:flex;gap:12px;align-items:center;margin:6px 0"><div class="rating">${renderStars(p.rating)}<small style="color:var(--muted);margin-left:6px">${p.rating}</small></div><small style="color:var(--muted)">· ${p.reviews} reviews</small>${p.badge?`<span class="badge" style="margin-left:8px">Prime</span>`:''}</div>
+                  <div class="desc">${p.description}</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                    <small style="color:var(--muted)">${p.category}</small>
+                    <div style="display:flex;gap:8px">
+                      <button class="add" data-id="${p.id}">Add to Cart</button>
+                      <button class="view" data-id="${p.id}" style="padding:8px;border-radius:8px;border:1px solid #e6e9ef;background:white;cursor:pointer">View</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('');
+          } else {
+            productList.innerHTML = items.map(p => `
+              <article class="card amazon" data-id="${p.id}">
+                <div class="img" data-id="${p.id}"><img src="${p.img}" alt="${p.name}" loading="lazy"/></div>
+                <div>
+                  <div class="title-row"><strong>${p.name}</strong><span class="price-big">$${p.price}</span></div>
+                  <div style="display:flex;gap:10px;align-items:center;margin:6px 0"><div class="rating">${renderStars(p.rating)}<small style="color:var(--muted);margin-left:6px">${p.rating}</small></div><small style="color:var(--muted)">· ${p.reviews} reviews</small>${p.badge?`<span class="badge" style="margin-left:8px">Prime</span>`:''}</div>
+                  <div class="desc">${p.description}</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                    <small style="color:var(--muted)">${p.category}</small>
+                    <div style="display:flex;gap:8px">
+                      <button class="add" data-id="${p.id}">Add to Cart</button>
+                      <button class="view" data-id="${p.id}" style="padding:8px;border-radius:8px;border:1px solid #e6e9ef;background:white;cursor:pointer">View</button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            `).join('');
+          }
+
+          // attach handlers
+          productList.querySelectorAll('.add').forEach(btn=>btn.addEventListener('click', ()=>{ const id = Number(btn.dataset.id); addToCart(id); }));
+          productList.querySelectorAll('.view').forEach(btn=>btn.addEventListener('click', ()=>{ openModal(Number(btn.dataset.id)); }));
+          productList.querySelectorAll('.img').forEach(div=>div.addEventListener('click', ()=>{ openModal(Number(div.dataset.id)); }));
+        }
+          `).join('');
+
+          // attach handlers
+          productList.querySelectorAll('.add').forEach(btn=>btn.addEventListener('click', ()=>{ const id = Number(btn.dataset.id); addToCart(id); }));
+          productList.querySelectorAll('.view').forEach(btn=>btn.addEventListener('click', ()=>{ openModal(Number(btn.dataset.id)); }));
+          productList.querySelectorAll('.img').forEach(div=>div.addEventListener('click', ()=>{ openModal(Number(div.dataset.id)); }));
+        }
+
+        function renderStars(rating){
+          const n = Math.round(Number(rating));
+          return '★'.repeat(n) + '☆'.repeat(5-n);
+        }
+
+        // modal wiring
+        const modalEl = $('productModal');
+        const modalImage = $('modalImage');
+        const modalTitle = $('modalTitle');
+        const modalDesc = $('modalDesc');
+        const modalPrice = $('modalPrice');
+        const modalRating = $('modalRating');
+        const modalReviews = $('modalReviews');
+        const modalBadge = $('modalBadge');
+        const modalClose = $('modalClose');
+        const modalQty = $('modalQty');
+        const modalAdd = $('modalAdd');
+        const modalBuy = $('modalBuy');
+
+        function openModal(id){
+          const p = productStore.find(x=>x.id===id); if(!p) return;
+          modalImage.src = p.img;
+          modalImage.alt = p.name;
+          modalTitle.textContent = p.name;
+          modalDesc.textContent = p.description;
+          modalPrice.textContent = '$' + Number(p.price).toFixed(2);
+          modalRating.innerHTML = renderStars(p.rating) + `<small style="color:var(--muted);margin-left:8px">${p.rating}</small>`;
+          modalReviews.textContent = `(${p.reviews})`;
+          modalBadge.style.display = p.badge ? 'inline-block' : 'none';
+          modalQty.value = 1;
+          modalAdd.dataset.id = id;
+          modalBuy.dataset.id = id;
+          modalEl.style.display = 'flex';
+        }
+        function closeModal(){ modalEl.style.display = 'none'; }
+        modalClose.addEventListener('click', closeModal);
+        modalEl.addEventListener('click', e=>{ if(e.target === modalEl) closeModal(); });
+        modalAdd.addEventListener('click', ()=>{ const id = Number(modalAdd.dataset.id); const qty = Number(modalQty.value)||1; const p = productStore.find(x=>x.id===id); if(!p) return; const found = state.cart.find(i=>i.id===id); if(found) found.quantity += qty; else state.cart.push({...p,quantity:qty}); saveCart(); renderCart(); closeModal(); });
+        modalBuy.addEventListener('click', ()=>{ const id = Number(modalBuy.dataset.id); const qty = Number(modalQty.value)||1; const p = productStore.find(x=>x.id===id); if(!p) return; alert('Buying '+qty+' x '+p.name + '\nTotal: $' + (p.price*qty).toFixed(2)); closeModal(); });
+
+        function renderCart(){
+          if(!state.cart || state.cart.length === 0){ cartList.innerHTML = '<div style="color:var(--muted)">Your cart is empty</div>'; cartTotal.textContent = '$0.00'; checkout.disabled = true; return; }
+          cartList.innerHTML = state.cart.map(i=>`
+            <div class="cart-item" data-id="${i.id}">
+              <img src="${i.img}" alt="${i.name}"/>
+              <div class="item-info">
+                <div class="name">${i.name}</div>
+                <div class="price">$${i.price}</div>
+                <div class="controls-row">
+                  <input type="number" min="1" value="${i.quantity}" data-id="${i.id}" />
+                  <button class="remove" data-id="${i.id}">Remove</button>
+                </div>
+              </div>
+            </div>
+          `).join('');
+          cartList.querySelectorAll('.remove').forEach(b=>b.addEventListener('click', ()=>removeFromCart(Number(b.dataset.id))));
+          cartList.querySelectorAll('input[type=number]').forEach(inp=>inp.addEventListener('change', ()=>changeQty(Number(inp.dataset.id), Number(inp.value))));
+          const total = state.cart.reduce((s,i)=>s + i.price * i.quantity, 0); cartTotal.textContent = '$' + total.toFixed(2); checkout.disabled = false;
+        }
+
+        // actions
+        function addToCart(id){ const p = productStore.find(x=>x.id===id); if(!p) return; const found = state.cart.find(i=>i.id===id); if(found) found.quantity += 1; else state.cart.push({...p, quantity: 1}); saveCart(); renderCart(); }
+        function removeFromCart(id){ state.cart = state.cart.filter(i=>i.id !== id); saveCart(); renderCart(); }
+        function changeQty(id, qty){ const it = state.cart.find(i=>i.id===id); if(!it) return; it.quantity = Math.max(1, qty); saveCart(); renderCart(); }
+
+        // wire controls
+        search.addEventListener('input', e=>{ state.searchText = e.target.value; renderProducts(); });
+        categorySelect.addEventListener('change', e=>{ state.category = e.target.value; renderProducts(); });
+        checkout.addEventListener('click', ()=>{ if(!state.cart || state.cart.length === 0) return alert('Your cart is empty'); alert('Checkout demo — cart total: ' + cartTotal.textContent); state.cart = []; saveCart(); renderCart(); });
+
+        // view toggle
+        const toggleViewBtn = $('toggleView');
+        toggleViewBtn.addEventListener('click', ()=>{
+          viewMode = viewMode === 'grid' ? 'list' : 'grid';
+          toggleViewBtn.textContent = viewMode === 'grid' ? 'List View' : 'Grid View';
+          renderProducts();
+        });
+
+        // add product UI
+        const toggleAdd = $('toggleAdd');
+        const addArea = $('addArea');
+        const addBtn = $('addProductBtn');
+        const cancelAdd = $('cancelAdd');
+        function clearAddForm(){ $('newName').value=''; $('newPrice').value=''; $('newCategory').value=''; $('newImg').value=''; $('newDesc').value=''; }
+        toggleAdd.addEventListener('click', ()=>{ addArea.style.display = addArea.style.display === 'none' ? 'block' : 'none'; });
+        cancelAdd.addEventListener('click', ()=>{ addArea.style.display='none'; clearAddForm(); });
+        addBtn.addEventListener('click', ()=>{
+          const name = $('newName').value.trim(); const price = Number($('newPrice').value); const cat = $('newCategory').value.trim() || 'Uncategorized'; const img = $('newImg').value.trim() || 'https://via.placeholder.com/400x300?text=Product'; const desc = $('newDesc').value.trim() || '';
+          if(!name || !price){ alert('Please provide name and price'); return; }
+          const newId = (productStore.reduce((m,p)=>Math.max(m,p.id), 0) || 0) + 1; const newProd = { id:newId, name, price, img, category:cat, description:desc };
+          productStore.unshift(newProd); saveProducts(productStore); renderCategories(); renderProducts(); addArea.style.display='none'; clearAddForm();
+        });
+
+        // Reset/Clear saved products and cart (helpful when localStorage blocks or is corrupted)
+        const resetBtn = $('resetCatalog');
+        if(resetBtn){
+          resetBtn.addEventListener('click', ()=>{
+            if(!confirm('This will clear any saved products and cart and reload defaults. Continue?')) return;
+            try{ localStorage.removeItem('static_products'); localStorage.removeItem('static_cart'); }catch(e){}
+            location.reload();
+          });
+        }
+
+        // initial render
+        renderCategories(); renderProducts(); renderCart();
+      })();
+    </script>
+  </body>
+</html>
